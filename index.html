@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML 在线代码编辑器</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233498db'%3E%3Cpath d='M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z'/%3E%3C/svg%3E">
+    
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
+    
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 主要内容区域 -->
+        <div class="main-content">
+            <!-- 左侧代码编辑区 -->
+            <div class="editor-section">
+                <div class="section-header">
+                    <span>💻 代码编辑器</span>
+                    <div class="header-controls">
+                        <div class="search-container">
+                            <input type="text" class="search-box" id="code-search" placeholder="🔍 搜索代码..." onkeyup="searchCode()" onkeydown="handleSearchKeydown(event)">
+                            <span class="search-counter" id="search-counter"></span>
+                            <button class="search-nav-btn" id="search-prev" onclick="navigateSearch(-1)" title="上一个">↑</button>
+                            <button class="search-nav-btn" id="search-next" onclick="navigateSearch(1)" title="下一个">↓</button>
+                        </div>
+                        <button class="btn" onclick="generatePreview()">🔍 预览</button>
+                        <button class="btn save" onclick="saveCode()">💾 保存代码</button>
+                        <button class="btn" onclick="showBatchImportModal()">📁 批量导入</button>
+                    </div>
+                </div>
+                <div class="editor-container">
+                    <textarea id="code-editor"></textarea>
+                </div>
+            </div>
+
+            <!-- 分隔条 -->
+            <div class="resizer" id="resizer"></div>
+
+            <!-- 右侧注释提取区 -->
+            <div class="comments-section">
+                <div class="section-header">
+                    💬 HTML 注释
+                </div>
+                <div class="comments-content" id="comments-content">
+                    <div class="no-comments">暂无注释内容</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部历史记录区 -->
+        <div class="history-section">
+            <div class="history-header">
+                <span>📚 历史记录</span>
+                <div class="search-container">
+                    <input type="text" class="search-box" id="history-search" placeholder="🔍 搜索历史记录..." onkeyup="searchHistory()">
+                </div>
+            </div>
+            <div class="history-list" id="history-list">
+                <div class="no-history">暂无保存记录</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 保存对话框 -->
+    <div class="modal-overlay" id="save-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>💾 保存代码</h3>
+                <button class="close-btn" onclick="closeSaveModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label for="file-name">文件名称：</label>
+                <input type="text" id="file-name" placeholder="请输入文件名称" maxlength="50">
+                <label for="file-type">文件类型：</label>
+                <select id="file-type">
+                    <option value="html">HTML文件 (.html)</option>
+                    <option value="txt">文本文件 (.txt)</option>
+                </select>
+                <div class="modal-note">选择要保存的文件格式</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeSaveModal()">取消</button>
+                <button class="btn save" onclick="confirmSave()">确认保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 批量导入对话框 -->
+    <div class="modal-overlay" id="batch-import-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>📥 批量导入文件</h3>
+                <button class="close-btn" onclick="closeBatchImportModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label for="batch-files">选择文件：</label>
+                <input type="file" id="batch-files" multiple accept=".html,.htm,.txt,.css,.js">
+                <div class="modal-note">支持 HTML、CSS、JS、TXT 文件格式</div>
+                
+                <div id="import-progress" style="display: none; margin-top: 15px;">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <div class="progress-text">正在导入文件...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeBatchImportModal()">取消</button>
+                <button class="btn save" onclick="startBatchImport()">开始导入</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="success-message" id="success-message"></div>
+
+    <!-- CodeMirror JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/brace-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/xml-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/comment-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/html-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/css-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/javascript-hint.min.js"></script>
+
+    <!-- 自定义JavaScript -->
+    <script src="js/app.js"></script>
+</body>
+</html>
